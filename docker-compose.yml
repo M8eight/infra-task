@@ -54,11 +54,43 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U school_user -d user_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./init-db:/docker-entrypoint-initdb.d
+
+  keycloak:
+    container_name: keycloak
+    image: quay.io/keycloak/keycloak:25.0.5
+    ports:
+      - "9090:8080"
+    command: start-dev --import-realm
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<> /dev/tcp/127.0.0.1/8080"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    environment:
+      KC_MAX_HEAP_SIZE: "512m"
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: password
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak_db
+      KC_DB_USERNAME: keycloak_user
+      KC_DB_PASSWORD: keycloak_pass
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+      - ./keycloak/keycloak-setup.json:/opt/keycloak/data/import/realm.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy  
 
   silo:
     image: pgsty/silo:latest
@@ -91,3 +123,4 @@ services:
 volumes:
   silo_data:
   pgdata:
+  keycloak_data:
