@@ -35,6 +35,9 @@ services:
             --create --if-not-exists --topic $$t \
             --partitions 4 --replication-factor 1
         done
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:29092 \
+          --create --if-not-exists --topic subscription.changed \
+          --partitions 1 --replication-factor 1
 
   kafka-ui:
     image: ghcr.io/kafbat/kafka-ui:latest
@@ -90,7 +93,22 @@ services:
       - ./keycloak/keycloak-setup.json:/opt/keycloak/data/import/realm.json:ro
     depends_on:
       postgres:
-        condition: service_healthy  
+        condition: service_healthy 
+
+  redis:
+    image: redis:7-alpine
+    container_name: local-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass redis_pass
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "redis_pass", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5 
 
   silo:
     image: pgsty/silo:latest
@@ -124,3 +142,4 @@ volumes:
   silo_data:
   pgdata:
   keycloak_data:
+  redis_data:
