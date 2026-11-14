@@ -90,7 +90,7 @@ services:
       KC_DB_PASSWORD: keycloak_pass
     volumes:
       - keycloak_data:/opt/keycloak/data
-      - ./keycloak/keycloak-setup.json:/opt/keycloak/data/import/realm.json:ro
+      - ./configs/keycloak/keycloak-setup.json:/opt/keycloak/data/import/realm.json:ro
     depends_on:
       postgres:
         condition: service_healthy 
@@ -137,6 +137,30 @@ services:
           sleep 2
         done
         mc mb --ignore-existing local/file-converter-storage
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./grafana:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - prometheus
 
 volumes:
   silo_data:
